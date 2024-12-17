@@ -4,29 +4,37 @@ m.settings = {
     --- string
     mode = 'simple'
 }
+m.printModes = {
+    ["classic"] = function(info)
+        return ''
+    end,
+    ["simple"] = function(info)
+        return info.short_src .. ':' .. info.currentline .. ': '
+    end,
+    ["prettier"] = function(info)
+        return '[' .. info.short_src .. ' : ' .. info.currentline .. ']: '
+    end
+}
+m.parsers = {
+    ["table"] = function(t)
+        local ct = {}
+        for k, v in pairs(t) do
+            table.insert(ct, k .. ' = ' .. v)
+        end
+        return '{' .. table.concat(ct, ', ') .. '}'
+    end,
+    ["function"] = function(f)
+        return debug.getinfo(f, "n").name
+    end
+}
 
 local function echo(input) os.execute('echo ' .. input) end
-local function tableparser(list)
-    local parse, pos = {}, 0
-    for k, v in pairs(list) do
-        pos = pos + 1
-        parse[pos] = k .. ' = ' .. v
-    end
-    return '{' .. table.concat(parse, ', ') .. '}'
-end
 
 ---@param ... any
 function print(...)
     for _, v in ipairs({ ... }) do
-        local info = debug.getinfo(2, "Sl")
-        local prefix = ''
-        if m.settings.mode == 'simple' then
-            prefix = info.short_src .. ':' .. info.currentline .. ': '
-        elseif m.settings.mode == 'prettier' then
-            prefix = '[' .. info.short_src .. ' : ' .. info.currentline .. ']: '
-        end
-
-        echo(prefix .. (type(v) == 'table' and tableparser(v) or tostring(v)))
+        local prefix = m.printModes[m.settings.mode](debug.getinfo(2, "Sl"))
+        echo(prefix .. (m.parsers[type(v)] or tostring)(v))
     end
 end
 
